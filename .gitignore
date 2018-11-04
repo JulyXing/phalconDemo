@@ -1,0 +1,8 @@
+*.*
+
+!.gitignore
+!app/
+!public
+!README.md
+!LICENSE
+!composer.json

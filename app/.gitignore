@@ -1,0 +1,11 @@
+*.*
+
+!.gitignore
+!config/
+!controllers/
+!models/
+!views/
+!logs/
+!plugins/
+
+!Exception.php

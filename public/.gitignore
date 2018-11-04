@@ -1,0 +1,10 @@
+*.*
+
+!css/
+!js/
+!img/
+
+!.gitignore
+!index.php
+
+!rebot.txt

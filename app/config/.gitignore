@@ -1,0 +1,8 @@
+*.*
+
+!.gitignore
+
+!config.php
+!database.php
+!php.ini.php
+!redis.php
