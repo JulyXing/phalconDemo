@@ -6,3 +6,4 @@
 !database.php
 !php.ini.php
 !redis.php
+!router.php
