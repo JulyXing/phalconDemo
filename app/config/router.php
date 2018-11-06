@@ -2,5 +2,5 @@
 
 $router = new Phalcon\Mvc\Router();
 
-$router->setDefaulfController('Index');
+$router->setDefaultController('Index');
 $router->setDefaultAction('index');

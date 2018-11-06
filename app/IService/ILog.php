@@ -14,5 +14,15 @@ namespace app\IService;
  */
 Interface ILog
 {
-    public static function record($type, $level, $msg, $context);
+    public static function log(int $type, $msg, array $context);
+    public static function critical($msg, array $context);
+    public static function emergency($msg, array $context);
+    public static function debug($msg, array $context);
+    public static function error($msg, array $context);
+    public static function info($msg, array $context);
+    public static function notice($msg, array $context);
+    public static function warning($msg, array $context);
+    public static function alert($msg, array $context);
+    public static function net($msg, array $context);
+    public static function db($msg, array $context);
 }

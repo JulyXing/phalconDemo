@@ -21,7 +21,7 @@ class PHPError extends Plugin
      * @return void
      * @link http://php.net/manual/zh/book.errorfunc.php
      */
-    public function errorHandler(int $errno, string $errstr, string $errfile, string $errline, array $errcontext)
+    public static function errorHandler(int $errno, string $errstr, string $errfile, string $errline, array $errcontext)
     {
         $result = self::switchType($errno);
         $a_result = array(
@@ -39,12 +39,13 @@ class PHPError extends Plugin
      *
      * set_exception_handler()
      * 
-     * @return void
+     * @return bool
      * @link http://php.net/manual/zh/book.errorfunc.php
      */
-    public function exceptionHandler(Exception $e)
+    public static function exceptionHandler($e)
     {
-        return self::handler('error', ['Exception'] . $e->getMessage());
+        return true;
+        // return self::handler('error', ['Exception'] . $e->getMessage());
     }
 
     /**
@@ -56,14 +57,14 @@ class PHPError extends Plugin
      * @link http://php.net/manual/zh/function.register-shutdown-function.php
      * @link http://php.net/manual/zh/function.error-get-last.php
      */
-    public function fatalHandler()
+    public static function fatalHandler()
     {   
         // 获取最后一次错误信息
         $a_result = error_get_last();
         if (null == $a_result) {
-            return ture;
+            return false;
         }
-        $result = $this->switchType($a_result['type']);
+        $result = self::switchType($a_result['type']);
         $type = $result['value'];
         $a_result['message'] = "[$type]" . $a_result['message'];
 
@@ -78,7 +79,7 @@ class PHPError extends Plugin
      * @param int $type
      * @return array
      */
-    private function switchType(int $type)
+    private static function switchType(int $type)
     {
         switch($type) {
             case 1:

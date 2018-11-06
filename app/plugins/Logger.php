@@ -19,7 +19,7 @@ use Phalcon\Logger\Formatter\Line as LineFormatter;
 /**
  * 日志插件。
  */
-class Logger extends Plguin implements ILog
+class Logger extends Plugin implements ILog
 {
     private static $debug = false;
     private static $style = 'file';
@@ -34,15 +34,46 @@ class Logger extends Plguin implements ILog
     const LEVEL_WARNING = 7;
     const LEVEL_ALERT = 8;
     const LEVEL_SPECIAL = 9;     // 兼容 phlacon 特殊日志类型
+    const LEVEL_NET = 10;
+    const LEVEL_DB = 11;
 
     /**
      * 构造函数。
      */
     public function __construct()
     {
-        self::$config = $this->di->get('config');
-        self::$debug = $this->config->debug;
-        self::$style = $this->config->type;
+        $config = $this->di->get('config');
+        self::$config = $config;
+        self::$debug = $config->debug;
+        self::$style = $config->log->type;
+    }
+
+    /**
+     * 设置配置信息。
+     *
+     * @param Phalcon\Config $config
+     * @return object
+     */
+    public function setConfig($config)
+    {
+        if (!is_object($config)) {
+            throw new app\Exception('参数格式错误!');
+        }
+        if (!($config instanceof  Phalcon\Config)) {
+            throw new app\Exception('参数非 Phalcon\Config 实例!');
+        }
+
+        self::$config = $config;
+    }
+
+    /**
+     * 获取配置信息。
+     *
+     * @return object
+     */
+    public static function getConfig() 
+    {
+        return self::$config;
     }
 
     /**
@@ -53,11 +84,15 @@ class Logger extends Plguin implements ILog
      */
     private static function getPath($level)
     {
-        $dir_path = self::config.log.filepath . $level;
-        if (!is_dir($dir_path)) {
-            @mkdir($dir_path, 0755);
+        $config = self::getConfig();
+        $path = '';
+        if ('file' == self::$style) {
+            $dir_path = $config->log->filepath  . $level;
+            if (!is_dir($dir_path)) {
+                @mkdir($dir_path, 0644);
+            }
+            $path = $dir_path . '/' . date("Ymd") . '.log';
         }
-        $path = $dir_path . '/' . $level . '_' . date("Ymd") . '.log';
 
         return $path;
     }
@@ -65,38 +100,103 @@ class Logger extends Plguin implements ILog
     /**
      * 日志写入。
      *
-     * @param [type] $type
-     * @param [type] $level
-     * @param [type] $msg
+     * @param int       $type
+     * @param string    $level
+     * @param string    $msg
+     * @param array     $context
      * @return bool
      */
-    private static function record($type, $level, $msg, $context)
+    private static function record(int $type, string $level, $msg, $context)
     {
+        if (!self::$debug) {
+            return false;
+        }
         $path = self::getPath($level);
+        if ('' == $path) {
+            throw new app\Exception('日志存放路径未指定!');
+        }
+
         // 日志写入方式, file、stream、syslog
         switch(self::$style) {
             case 'file':
-                $adapter = new FileAdapter($path);
+                self::file($path, $type, $msg, $context);
                 break;
             case 'stream':
-                $adapter = new StreamAdapter();
+                self::stream($path);
                 break;
             case 'syslog':
-                $adapter = new SysLogAdapter();
+                self::syslog($path);
                 break;
             default:
-                $adapter = new FileAdapter($path);
+                self::file($path);
         }
-        $adapter->setLogLevel($level);
-        $line = new LineFormatter();
-        $logDateFormat = $line->setDateFormat("Y-m-d H:i:s");
-        $adapter->setFormatter($logDateFormat);
-        
-        $adapter->begin();
-        if (!$adapter->log($type, $msg, $context)) {
-            $adapter->rollback();
+
+        return true;
+    }
+
+    /**
+     * 获取日志级别。
+     *
+     * @param integer $type
+     * @return string
+     */
+    private static function getLogLevel(int $type)
+    {
+        switch($type) {
+            case 1:
+                $level = 'CRITICAL';
+                break;
+            case 2:
+                $level = 'EMERGENCY';
+                break;
+            case 3:
+                $level = 'DEBUG';
+                break;
+            case 4:
+                $level = 'ERROR';
+                break;
+            case 5:
+                $level = 'INFO';
+                break;
+            case 6:
+                $level = 'NOTICE';
+                break;
+            case 7:
+                $level = 'WARNING';
+                break;
+            case 8:
+                $level = 'ALERT';
+                break;
+            case 9:
+                $level = 'SPECIAL';
+                break;
+            case 10:
+                $level = 'NET';
+                break;
+            case 11:
+                $level = 'DB';
+                break;
+            default:
+                $level = 'DEBUG';
         }
-        $adapter->commit();
+
+        return $level;
+    }
+
+    /**
+     * 通用日志处理。
+     *
+     * @param integer $type
+     * @param string $msg
+     * @param array $context
+     * @return bool
+     */
+    public static function log(int $type, $msg, array $context = [])
+    {
+        $level = self::getLogLevel($type);
+        $level = strtolower($level);
+
+        self::$level($msg, $context);
 
         return true;
     }
@@ -114,61 +214,96 @@ class Logger extends Plguin implements ILog
     }
 
     // 调试的
-    public static function debug($msg, $context)
+    public static function debug($msg, array $context = array())
     {
         self::record(self::LEVEL_DEBUG, 'DEBUG', $msg, $context);
     }
 
     // 错误的
-    public static function error($msg, $context)
+    public static function error($msg, array $context = array())
     {
         self::record(self::LEVEL_ERROR, 'ERROR', $msg, $context);
     }
 
     // 信息
-    public static function info($msg, $context)
+    public static function info($msg, array $context = array())
     {
         self::record(self::LEVEL_INFO, 'INFO', $msg, $context);
     }
 
     // 注意、警告
-    public static function notice($msg, $context)
+    public static function notice($msg, array $context = array())
     {
         self::record(self::LEVEL_NOTICE, 'NOTICE', $msg, $context);
     }
 
     // 警告
-    public static function warning($msg, $context)
+    public static function warning($msg, array $context = array())
     {
         self::record(self::LEVEL_WARNING, 'WARNING', $msg, $context);
     }
 
     // 警备的
-    public static function alert($msg, $context)
+    public static function alert($msg, array $context = array())
     {
         self::record(self::LEVEL_ALERT, 'ALERT', $msg, $context);
     }
 
     // 请求日志，做特殊类型 special 处理
-    public static function access($msg, $context)
+    public static function net($msg, array $context = array())
     {
-        self::record(self::LEVEL_SPECIAL, 'SPECIAL', $msg, $context);
+        self::record(self::LEVEL_SPECIAL, 'NET', $msg, $context);
+    }
+
+    // 数据库预处理 SQL 日志
+    public static function db($msg, array $context = array())
+    {
+        self::record(self::LEVEL_SPECIAL, 'DB', $msg, $context);
     }
 
     /**
-     * 
+     * 文件处理方式。
+     *
+     * @param string $path
+     * @param array $options
+     * @return bool
      */
-    private function FileAdapter($file, $msg)
+    private static function file($path, $type, $msg, $context, array $options = [])
     {
+        $adapter = new FileAdapter($path);
+        $line = new LineFormatter();
+        $logDateFormat = $line->setDateFormat("Y-m-d H:i:s");
+        $adapter->setFormatter($logDateFormat);
 
+        $adapter->begin();
+        if (!$adapter->log($type, $msg, $context)) {
+            $adapter->rollback();
+        }
+        $adapter->commit();
+
+        return true;
     }
 
-    private function StreamAdapter()
+    /**
+     * 流处理方式。
+     *
+     * @param string $path
+     * @param array $options
+     * @return void
+     */
+    private static function stream($path, array $options = [])
     {
         // TODO
     }
 
-    private function SysLogAdapter()
+    /**
+     * 系统日志处理方式。
+     *
+     * @param string $path
+     * @param array $options
+     * @return void
+     */
+    private static function syslog($path, array $options = [])
     {
         // TODO
     }
