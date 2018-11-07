@@ -8,21 +8,21 @@
  */
 
 namespace app\controllers;
-
+ 
 use app\plugins\Logger;
 
 class IndexController extends ControllerBase
 {
     public function indexAction()
     {
-        echo time();
+        echo "Hello Phalcon!<br/>";
     }
 
-    public function testAction()
+    public function route404Action()
     {
-        echo "Hello Phalcon!<br/>";
-        error_log('111' . "\n", 3, 'log.txt');
-        $logger = new Logger();
-        Logger::critical('123');
+        // $response = new Phalcon\Http\Response();
+        // $response->setStatusCode('404', 'Not Found');
+        // $response->send();
+        echo  '404';
     }
 }

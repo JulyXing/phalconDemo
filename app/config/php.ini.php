@@ -7,6 +7,7 @@
  * @copyright 2018 JulyXing
  */
 
+namespace app\config;
 
 $config = include('app/config/config.php');
 
